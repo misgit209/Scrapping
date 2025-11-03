@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Extraction System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .upload-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        @media (max-width: 768px) {
+            .upload-section {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .upload-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .upload-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+        }
+
+        .dc-card {
+            border-top: 5px solid #4CAF50;
+        }
+
+        .invoice-card {
+            border-top: 5px solid #2196F3;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .card-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-size: 1.5rem;
+            color: white;
+        }
+
+        .dc-icon {
+            background: #4CAF50;
+        }
+
+        .invoice-icon {
+            background: #2196F3;
+        }
+
+        .card-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .card-description {
+            color: #666;
+            margin-bottom: 25px;
+            line-height: 1.6;
+        }
+
+        .upload-area {
+            border: 2px dashed #ddd;
+            border-radius: 10px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+        }
+
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+
+        .upload-area.dragover {
+            border-color: #4CAF50;
+            background: #f0fff0;
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .upload-text {
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .browse-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.3s ease;
+        }
+
+        .browse-btn:hover {
+            background: #5a6fd8;
+        }
+
+        .selected-file {
+            margin-top: 15px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            border-left: 4px solid #4CAF50;
+        }
+
+        .extract-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }
+
+        .extract-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
+        }
+
+        .extract-btn:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .invoice-btn {
+            background: linear-gradient(135deg, #2196F3, #1976D2);
+        }
+
+        .invoice-btn:hover {
+            box-shadow: 0 5px 15px rgba(33, 150, 243, 0.4);
+        }
+
+        .results-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-top: 30px;
+            display: none;
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .results-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .document-type-badge {
+            background: #667eea;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .result-item {
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .result-label {
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+        }
+
+        .result-value {
+            color: #333;
+            font-size: 1.1rem;
+            word-break: break-word;
+        }
+
+        .not-available {
+            color: #999;
+            font-style: italic;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .tab.active {
+            border-bottom-color: #667eea;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .line-items {
+            margin-top: 20px;
+        }
+
+        .line-item {
+            padding: 10px;
+            background: #f8f9fa;
+            margin-bottom: 5px;
+            border-radius: 5px;
+            border-left: 3px solid #4CAF50;
+        }
+
+        .metadata-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .metadata-title {
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #555;
+        }
+
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border-left: 4px solid #28a745;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border-left: 4px solid #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Document Extraction System</h1>
+            <p>Upload Delivery Challans and Invoices to automatically extract key information</p>
+        </div>
+
+        <div class="upload-section">
+            <!-- Delivery Challan Upload Card -->
+            <div class="upload-card dc-card">
+                <div class="card-header">
+                    <div class="card-icon dc-icon">
+                        ??
+                    </div>
+                    <div class="card-title">Delivery Challan</div>
+                </div>
+                <p class="card-description">
+                    Upload Delivery Challan documents to extract supplier information, DC numbers, dates, amounts, and other relevant details.
+                </p>
+                
+                <div class="upload-area" id="dcUploadArea">
+                    <div class="upload-icon">??</div>
+                    <div class="upload-text">Drag & Drop your Delivery Challan PDF</div>
+                    <div class="upload-text">or</div>
+                    <button class="browse-btn" onclick="document.getElementById('dcFileInput').click()">
+                        Browse Files
+                    </button>
+                    <input type="file" id="dcFileInput" class="file-input" accept=".pdf" onchange="handleDcFileSelect(this.files)">
+                </div>
+                
+                <div id="dcFileInfo" class="selected-file" style="display: none;">
+                    <strong>Selected File:</strong> <span id="dcFileName"></span>
+                </div>
+                
+                <button class="extract-btn" id="dcExtractBtn" onclick="extractDcInfo()" disabled>
+                    Extract Delivery Challan Information
+                </button>
+            </div>
+
+            <!-- Invoice Upload Card -->
+            <div class="upload-card invoice-card">
+                <div class="card-header">
+                    <div class="card-icon invoice-icon">
+                        ??
+                    </div>
+                    <div class="card-title">Invoice</div>
+                </div>
+                <p class="card-description">
+                    Upload Invoice documents to extract supplier details, invoice numbers, dates, amounts, billing information, and more.
+                </p>
+                
+                <div class="upload-area" id="invoiceUploadArea">
+                    <div class="upload-icon">??</div>
+                    <div class="upload-text">Drag & Drop your Invoice PDF</div>
+                    <div class="upload-text">or</div>
+                    <button class="browse-btn" onclick="document.getElementById('invoiceFileInput').click()">
+                        Browse Files
+                    </button>
+                    <input type="file" id="invoiceFileInput" class="file-input" accept=".pdf" onchange="handleInvoiceFileSelect(this.files)">
+                </div>
+                
+                <div id="invoiceFileInfo" class="selected-file" style="display: none;">
+                    <strong>Selected File:</strong> <span id="invoiceFileName"></span>
+                </div>
+                
+                <button class="extract-btn invoice-btn" id="invoiceExtractBtn" onclick="extractInvoiceInfo()" disabled>
+                    Extract Invoice Information
+                </button>
+            </div>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div class="loading" id="loadingIndicator">
+            <div class="spinner"></div>
+            <div>Processing document... This may take a few moments.</div>
+        </div>
+
+        <!-- Results Section -->
+        <div class="results-section" id="resultsSection">
+            <div class="results-header">
+                <div class="results-title">Extracted Information</div>
+                <div class="document-type-badge" id="documentTypeBadge">Delivery Challan</div>
+            </div>
+
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('basicInfo')">Basic Information</div>
+                <div class="tab" onclick="switchTab('lineItems')">Line Items</div>
+                <div class="tab" onclick="switchTab('metadata')">Metadata</div>
+            </div>
+
+            <div id="basicInfo" class="tab-content active">
+                <div class="results-grid" id="basicInfoGrid">
+                    <!-- Basic information will be populated here -->
+                </div>
+            </div>
+
+            <div id="lineItems" class="tab-content">
+                <div class="line-items" id="lineItemsContent">
+                    <!-- Line items will be populated here -->
+                </div>
+            </div>
+
+            <div id="metadata" class="tab-content">
+                <div class="metadata-section" id="metadataContent">
+                    <!-- Metadata will be populated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentDcFile = null;
+        let currentInvoiceFile = null;
+
+        // Initialize drag and drop functionality
+        function initializeDragAndDrop() {
+            const dcUploadArea = document.getElementById('dcUploadArea');
+            const invoiceUploadArea = document.getElementById('invoiceUploadArea');
+
+            [dcUploadArea, invoiceUploadArea].forEach(area => {
+                area.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    area.classList.add('dragover');
+                });
+
+                area.addEventListener('dragleave', () => {
+                    area.classList.remove('dragover');
+                });
+
+                area.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    area.classList.remove('dragover');
+                    const files = e.dataTransfer.files;
+                    if (files.length > 0) {
+                        if (area.id === 'dcUploadArea') {
+                            handleDcFileSelect(files);
+                        } else {
+                            handleInvoiceFileSelect(files);
+                        }
+                    }
+                });
+            });
+        }
+
+        // Handle DC file selection
+        function handleDcFileSelect(files) {
+            if (files.length > 0) {
+                const file = files[0];
+                if (file.type === 'application/pdf') {
+                    currentDcFile = file;
+                    document.getElementById('dcFileName').textContent = file.name;
+                    document.getElementById('dcFileInfo').style.display = 'block';
+                    document.getElementById('dcExtractBtn').disabled = false;
+                } else {
+                    alert('Please select a PDF file for Delivery Challan.');
+                }
+            }
+        }
+
+        // Handle Invoice file selection
+        function handleInvoiceFileSelect(files) {
+            if (files.length > 0) {
+                const file = files[0];
+                if (file.type === 'application/pdf') {
+                    currentInvoiceFile = file;
+                    document.getElementById('invoiceFileName').textContent = file.name;
+                    document.getElementById('invoiceFileInfo').style.display = 'block';
+                    document.getElementById('invoiceExtractBtn').disabled = false;
+                } else {
+                    alert('Please select a PDF file for Invoice.');
+                }
+            }
+        }
+
+        // Extract DC information
+        async function extractDcInfo() {
+            if (!currentDcFile) return;
+            
+            showLoading();
+            const formData = new FormData();
+            formData.append('file', currentDcFile);
+            formData.append('type', 'delivery_challan');
+
+            try {
+                const response = await fetch('/extract-dc', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Server returned ${response.status}`);
+                }
+                
+                const result = await response.json();
+                displayResults(result, 'Delivery Challan');
+            } catch (error) {
+                console.error('Error:', error);
+                showError('Failed to extract information from the Delivery Challan.');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Extract Invoice information
+        async function extractInvoiceInfo() {
+            if (!currentInvoiceFile) return;
+            
+            showLoading();
+            const formData = new FormData();
+            formData.append('file', currentInvoiceFile);
+            formData.append('type', 'invoice');
+
+            try {
+                const response = await fetch('/extract-invoice', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Server returned ${response.status}`);
+                }
+                
+                const result = await response.json();
+                displayResults(result, 'Invoice');
+            } catch (error) {
+                console.error('Error:', error);
+                showError('Failed to extract information from the Invoice.');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Display results
+        function displayResults(data, docType) {
+            const resultsSection = document.getElementById('resultsSection');
+            const documentTypeBadge = document.getElementById('documentTypeBadge');
+            
+            documentTypeBadge.textContent = docType;
+            resultsSection.style.display = 'block';
+
+            // Display basic information
+            displayBasicInfo(data);
+            
+            // Display line items
+            displayLineItems(data.line_items || []);
+            
+            // Display metadata
+            displayMetadata(data.metadata || {});
+            
+            // Scroll to results
+            resultsSection.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Display basic information
+        function displayBasicInfo(data) {
+            const basicInfoGrid = document.getElementById('basicInfoGrid');
+            basicInfoGrid.innerHTML = '';
+
+            const fields = [
+                { key: 'supplier_name', label: 'Supplier Name' },
+                { key: 'gst_no', label: 'GST Number' },
+                { key: 'document_number', label: 'Document Number' },
+                { key: 'document_date', label: 'Document Date' },
+                { key: 'total_amount', label: 'Total Amount' },
+                { key: 'customer_name', label: 'Customer Name' },
+                { key: 'dispatch_mode', label: 'Dispatch Mode' },
+                { key: 'purpose', label: 'Purpose' },
+                { key: 'party_dc_number', label: 'Party DC Number' },
+                { key: 'party_dc_date', label: 'Party DC Date' }
+            ];
+
+            let hasData = false;
+
+            fields.forEach(field => {
+                const value = data[field.key];
+                const displayValue = (value && value !== 'Not Available' && value !== '') ? value : 
+                                   '<span class="not-available">Not Available</span>';
+                
+                // Only show fields that have data or show all fields with "Not Available"
+                const item = document.createElement('div');
+                item.className = 'result-item';
+                item.innerHTML = `
+                    <div class="result-label">${field.label}</div>
+                    <div class="result-value">${displayValue}</div>
+                `;
+                basicInfoGrid.appendChild(item);
+
+                if (value && value !== 'Not Available' && value !== '') {
+                    hasData = true;
+                }
+            });
+
+            // Show message if no basic info found
+            if (!hasData) {
+                basicInfoGrid.innerHTML = '<div class="not-available" style="grid-column: 1 / -1; text-align: center; padding: 40px;">No information could be extracted from this document.</div>';
+            }
+        }
+
+        // Display line items
+        function displayLineItems(lineItems) {
+            const lineItemsContent = document.getElementById('lineItemsContent');
+            lineItemsContent.innerHTML = '';
+
+            if (lineItems && lineItems.length > 0) {
+                lineItems.forEach((item, index) => {
+                    const itemElement = document.createElement('div');
+                    itemElement.className = 'line-item';
+                    itemElement.innerHTML = `
+                        <strong>Item ${index + 1}:</strong> ${item}
+                    `;
+                    lineItemsContent.appendChild(itemElement);
+                });
+            } else {
+                lineItemsContent.innerHTML = '<div class="not-available">No line items available</div>';
+            }
+        }
+
+        // Display metadata
+        function displayMetadata(metadata) {
+            const metadataContent = document.getElementById('metadataContent');
+            metadataContent.innerHTML = '';
+
+            let hasMetadata = false;
+
+            if (metadata.addresses && metadata.addresses.length > 0) {
+                const addressesSection = document.createElement('div');
+                addressesSection.innerHTML = '<div class="metadata-title">Addresses:</div>';
+                metadata.addresses.forEach(address => {
+                    const addressElement = document.createElement('div');
+                    addressElement.className = 'line-item';
+                    addressElement.textContent = address;
+                    addressesSection.appendChild(addressElement);
+                });
+                metadataContent.appendChild(addressesSection);
+                hasMetadata = true;
+            }
+
+            if (metadata.contacts) {
+                const contactsSection = document.createElement('div');
+                contactsSection.style.marginTop = '20px';
+                contactsSection.innerHTML = '<div class="metadata-title">Contact Information:</div>';
+                
+                let hasContacts = false;
+
+                if (metadata.contacts.phones && metadata.contacts.phones.length > 0) {
+                    metadata.contacts.phones.forEach(phone => {
+                        const phoneElement = document.createElement('div');
+                        phoneElement.className = 'line-item';
+                        phoneElement.textContent = `Phone: ${phone}`;
+                        contactsSection.appendChild(phoneElement);
+                        hasContacts = true;
+                    });
+                }
+
+                if (metadata.contacts.emails && metadata.contacts.emails.length > 0) {
+                    metadata.contacts.emails.forEach(email => {
+                        const emailElement = document.createElement('div');
+                        emailElement.className = 'line-item';
+                        emailElement.textContent = `Email: ${email}`;
+                        contactsSection.appendChild(emailElement);
+                        hasContacts = true;
+                    });
+                }
+
+                if (hasContacts) {
+                    metadataContent.appendChild(contactsSection);
+                    hasMetadata = true;
+                }
+            }
+
+            if (!hasMetadata) {
+                metadataContent.innerHTML = '<div class="not-available">No metadata available</div>';
+            }
+        }
+
+        // Tab switching
+        function switchTab(tabName) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Remove active class from all tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Show selected tab content
+            document.getElementById(tabName).classList.add('active');
+
+            // Add active class to clicked tab
+            event.target.classList.add('active');
+        }
+
+        // Show loading indicator
+        function showLoading() {
+            document.getElementById('loadingIndicator').style.display = 'block';
+        }
+
+        // Hide loading indicator
+        function hideLoading() {
+            document.getElementById('loadingIndicator').style.display = 'none';
+        }
+
+        // Show error message
+        function showError(message) {
+            const resultsSection = document.getElementById('resultsSection');
+            resultsSection.style.display = 'block';
+            resultsSection.innerHTML = `
+                <div class="error-message">
+                    <strong>Error:</strong> ${message}
+                </div>
+            `;
+        }
+
+        // Initialize the page
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDragAndDrop();
+        });
+    </script>
+</body>
+</html>

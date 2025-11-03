@@ -1,0 +1,19 @@
+{
+  "document_type": "Receipt",
+  "supplier_name": "cs \u00b0",
+  "gst_no": null,
+  "document_number": null,
+  "document_date": null,
+  "total_amount": null,
+  "customer_name": "you the following. Please acknowledge the ReeSter",
+  "dispatch_mode": "HAND",
+  "line_items": [],
+  "metadata": {
+    "addresses": [],
+    "contacts": {
+      "phones": [
+        "354 3272512 22"
+      ]
+    }
+  }
+}

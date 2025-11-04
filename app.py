@@ -14,7 +14,6 @@ app = Flask(__name__)
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-
 # ---------- Helper Functions ----------
 
 def is_image_pdf(pdf_path):
@@ -61,6 +60,57 @@ def extract_text_from_pdf(pdf_path):
     return text
 
 
+# ---------- Correction Functions ----------
+
+def clean_gst_number(gst_text):
+    """Clean and correct OCR misreads in GST number."""
+    if not gst_text:
+        return None
+
+    gst_text = gst_text.upper().strip()
+    gst_text = re.sub(r'[^A-Z0-9]', '', gst_text)
+
+    # Common OCR corrections
+    corrections = {
+        'O': '0',  # letter O → zero
+        'I': '1',  # letter I → one
+        'Z3': 'ZJ',  # common OCR mistake
+    }
+    for wrong, right in corrections.items():
+        gst_text = gst_text.replace(wrong, right)
+
+    # Validate length and pattern
+    if len(gst_text) == 15 and re.match(r'^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[A-Z0-9]{1}$', gst_text):
+        return gst_text
+    else:
+        return gst_text  # return even if imperfect, for debugging
+
+
+def clean_supplier_name(name):
+    """Clean supplier name and remove stray characters."""
+    if not name:
+        return None
+
+    name = name.strip()
+
+    # Remove starting junk (non-letter)
+    name = re.sub(r'^[^A-Za-z]+', '', name)
+
+    # Remove ending junk
+    name = re.sub(r'[^A-Za-z0-9\s\-\)&]+$', '', name)
+
+    # If ends with a single random letter like q, x, l
+    if re.search(r'\b[a-zA-Z]$', name):
+        name = name[:-1].strip()
+
+    # Fix double spaces
+    name = re.sub(r'\s{2,}', ' ', name)
+
+    return name.strip()
+
+
+# ---------- Extraction Functions ----------
+
 def extract_gst_number(text):
     """Extract GST number (handles all label variations)."""
     text = text.replace("\n", " ").replace("\r", " ").lower()
@@ -74,10 +124,10 @@ def extract_gst_number(text):
     if match:
         gst_match = re.search(gst_pattern, match.group(0), re.IGNORECASE)
         if gst_match:
-            return gst_match.group(0).upper()
+            return clean_gst_number(gst_match.group(0))
     fallback_match = re.search(gst_pattern, text, re.IGNORECASE)
     if fallback_match:
-        return fallback_match.group(0).upper()
+        return clean_gst_number(fallback_match.group(0))
     return None
 
 
@@ -91,44 +141,31 @@ def extract_supplier_info(text):
     for i, line in enumerate(lines):
         gst_match = re.search(r'GST\s*No[:\-]?\s*([A-Z0-9]{15})', line, re.IGNORECASE)
         if gst_match:
-            gst_number = gst_match.group(1).strip()
+            gst_number = clean_gst_number(gst_match.group(1).strip())
 
             # Look up a few lines above GST for supplier name candidates
             for j in range(max(0, i - 4), i):
                 candidate = lines[j].strip()
-                # Skip common junk headers or invalid lines
+                # Skip common junk headers
                 if any(word in candidate.upper() for word in [
                     "FORM", "DELIVERY", "CHALLAN", "RETURNABLE", "PARTY",
                     "DC", "DATE", "TO", "PURPOSE", "NO", "REV"
                 ]):
                     continue
-                # If line looks like a valid supplier name (contains letters, not mostly digits/symbols)
                 if re.search(r'[A-Za-z]{3,}', candidate) and len(candidate) > 5:
-                    supplier_name = candidate
+                    supplier_name = clean_supplier_name(candidate)
                     break
             break
 
-    # Fallback: If still not found, search top 10 lines for company-like lines
+    # Fallback: If still not found, search top 10 lines for company-like names
     if not supplier_name:
         for line in lines[:10]:
             if (
                 re.search(r'(LTD|LIMITED|PVT|PRIVATE|INDUSTRIES|ENTERPRISES|PLANT|CORP|COMPANY)', line, re.IGNORECASE)
                 and not any(word in line.upper() for word in ["TO", "DELIVERY", "CHALLAN", "RETURNABLE"])
             ):
-                supplier_name = line.strip()
+                supplier_name = clean_supplier_name(line)
                 break
-
-    # Final cleanup — remove unwanted chars and isolated trailing letters
-    if supplier_name:
-        # Remove junk characters at start
-        supplier_name = re.sub(r'^[^A-Za-z]+', '', supplier_name)
-        # Remove junk characters at end
-        supplier_name = re.sub(r'[^A-Za-z0-9\s\-\)&]+$', '', supplier_name)
-        supplier_name = supplier_name.strip()
-
-        # If ends with a single meaningless letter (like 'q', 'x', etc.)
-        if re.search(r'\b[a-zA-Z]$', supplier_name):
-            supplier_name = supplier_name[:-1].strip()
 
     return supplier_name, gst_number
 
@@ -184,12 +221,11 @@ def extract_data():
         supplier_name, gst_number = extract_supplier_info(text)
         parsed_data = parse_common_data(text)
 
-        # Merge intelligently (prefer supplier GST if both found)
+        # Merge intelligently
         if gst_number and gst_number != "Not Available":
             parsed_data['gst_no'] = gst_number
         parsed_data['supplier_name'] = supplier_name or "Not Available"
 
-        # Render HTML result
         return render_template('data_scrap.html', extracted_data=parsed_data)
 
     except Exception as e:

@@ -3,3 +3,5 @@ pytesseract
 opencv-python
 pillow
 regex
+ocrmypdf
+PyPDF2
